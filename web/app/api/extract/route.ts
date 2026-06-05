@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         sseEvent(controller, {
           type: 'stage',
           stage: 'analyzing',
-          message: `Scraped ${extractionData.screenshots.length} frames, ${Object.keys(extractionData.cssData.customProperties).length} CSS tokens, ${extractionData.hoverCaptures.length} hover states. Sending to Claude...`,
+          message: `Scraped ${extractionData.screenshots?.length || 0} frames, ${Object.keys(extractionData.cssData?.customProperties || {}).length} CSS tokens, ${extractionData.animationEngine?.hoverTransitions?.length || 0} hover transitions. Sending to Claude...`,
         });
 
         // ── Stage 2: Claude Analysis + Streaming ──────────────────────────
