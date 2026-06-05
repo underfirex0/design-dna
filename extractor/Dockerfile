@@ -1,5 +1,5 @@
 # Official Playwright image — Chrome already installed, no extra setup needed
-FROM mcr.microsoft.com/playwright:v1.45.0-jammy
+FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
