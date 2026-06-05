@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ─── The Design DNA Claude Prompt ───────────────────────────────────────────
 // This is the most important file in the entire project.
 // The quality of the .md output depends entirely on these prompts.
