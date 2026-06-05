@@ -50,7 +50,7 @@ Use these exact numbered headers. Write content freely within each. Skip section
 
 // ─── Build the user message for Claude ───────────────────────────────────────
 
-export function buildClaudeMessages(data) {
+export function buildClaudeMessages(data: import('./types').ExtractionData) {
   const {
     url,
     title,
