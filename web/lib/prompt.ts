@@ -61,8 +61,7 @@ export function buildClaudeMessages(data) {
   // Screenshots for visual context
   contentBlocks.push({
     type: 'text',
-    text: `\n\n═══════════════════════════════════════
-VISUAL SCREENSHOTS (${screenshots.length} frames — for visual context only)
+    text: `\n\n${'═'.repeat(50)}\nVISUAL SCREENSHOTS (${screenshots.length} frames — for visual context only)
 The animation data above is more precise than what screenshots can show.
 Use these to understand layout, color, and visual hierarchy.
 ═══════════════════════════════════════`,
