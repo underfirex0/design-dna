@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow 5min API routes (Playwright takes time)
-  serverExternalPackages: [],
-
   async headers() {
     return [
       {
