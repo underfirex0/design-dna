@@ -7,38 +7,96 @@ export interface ExtractionData {
   designData: DesignData;
   domStructure: DOMStructure;
   screenshots: Screenshot[];
-  hoverCaptures: HoverCapture[];
+  hoverCaptures?: HoverCapture[];
+  animationEngine: AnimationEngine;
+}
+
+export interface AnimationEngine {
+  loadSequence: AnimationSnapshot[];
+  scrollAnimations: ScrollAnimation[];
+  hoverTransitions: HoverTransition[];
+  libraries: Record<string, any>;
+  intersectionTriggers: IOTrigger[];
+  domMutations: MutationEntry[];
+  typewriterEffects: TypewriterEffect[];
+  classTogglePatterns: ClassTogglePattern[];
+}
+
+export interface AnimationSnapshot {
+  element: string;
+  elapsed: number;
+  playState: string;
+  currentTime: number;
+  timing: AnimationTiming;
+  keyframes: any[];
+}
+
+export interface ScrollAnimation {
+  triggeredAtScrollY: number;
+  element: string;
+  elementTag?: string;
+  elementId?: string;
+  timing: AnimationTiming;
+  keyframes: any[];
+  currentTime: number;
+}
+
+export interface HoverTransition {
+  label: string;
+  restingStyles: Record<string, string>;
+  hoverStyles: Record<string, string>;
+  animationsDetectedDuringHover: any[];
+  before: string;
+  after: string;
+}
+
+export interface IOTrigger {
+  tag: string;
+  class: string;
+  id: string | null;
+  threshold: number;
+  rootMargin: string;
+  scrollY: number;
+  t: number;
+}
+
+export interface MutationEntry {
+  type: string;
+  tag?: string;
+  t: number;
+}
+
+export interface TypewriterEffect {
+  element: string;
+  intervalMs: number;
+  characterCount: number;
+  sample: { start: string; middle: string; end: string };
+  startedAtMs: number;
+}
+
+export interface ClassTogglePattern {
+  className: string;
+  occurrences: number;
+  scrollPositions: number[];
+  elements: string[];
+  firstToggleAt: number;
+}
+
+export interface AnimationTiming {
+  duration: number;
+  delay: number;
+  easing: string;
+  fill?: string;
+  iterations?: number;
+  direction?: string;
 }
 
 export interface TechStack {
   framework: string | null;
-  gsap: boolean;
-  gsapVersion: string | null;
-  scrollTrigger: boolean;
-  framerMotion: boolean;
-  aos: boolean;
-  aosElements: number;
-  scrollReveal: boolean;
-  motionOne: boolean;
-  lottie: boolean;
-  anime: boolean;
-  lenis: boolean;
-  locomotive: boolean;
-  nativeSmoothScroll: boolean;
   tailwind: boolean;
   bootstrap: boolean;
   radix: boolean;
-  headlessui: boolean;
-  webgl: boolean;
-  threeJs: boolean;
-  spline: boolean;
-  particles: boolean;
-  splitType: boolean;
-  customCursor: boolean;
-  magneticElements: number;
-  videoBackground: boolean;
-  canvasAnimations: number;
-  scriptSources: string[];
+  animationLibraries: Record<string, any>;
 }
 
 export interface CSSData {
@@ -46,31 +104,23 @@ export interface CSSData {
   keyframes: string[];
   fontFaces: string[];
   transitions: string[];
-  animationNames: string[];
   computedStyles: Record<string, Record<string, string | undefined>>;
   googleFontsLinks: string[];
   fontFamiliesUsed: string[];
-  mediaQueryBreakpoints: string[];
 }
 
 export interface DesignData {
   pageHeight: number;
-  pageWidth: number;
   viewportWidth: number;
-  containers: Container[];
-  sections: Section[];
-  hasParallax: boolean;
-  stickyElements: StickyElement[];
+  headingSizes: Record<string, any>;
   colorSamples: string[];
   bgSamples: string[];
-  headingSizes: Record<string, HeadingStyle>;
-  cursorElements: unknown[];
+  stickyElements: any[];
   totalSectionCount: number;
 }
 
 export interface DOMStructure {
   hasNav: boolean;
-  hasFooter: boolean;
   hasHero: boolean;
   hasModal: boolean;
   hasCarousel: boolean;
@@ -78,60 +128,22 @@ export interface DOMStructure {
   hasForm: boolean;
   hasTabs: boolean;
   hasVideoBackground: boolean;
+  hasCustomCursor: boolean;
   sectionCount: number;
-  totalImages: number;
-  hasSVGIllustrations: boolean;
-  hasInlineAnimation: number;
   dataAttributes: string[];
 }
 
 export interface Screenshot {
   scrollPercent: number;
   scrollY: number;
-  data: string; // base64 JPEG
+  data: string;
 }
 
 export interface HoverCapture {
   label: string;
-  before: string; // base64 JPEG
-  after: string;  // base64 JPEG
+  before: string;
+  after: string;
 }
-
-interface Container {
-  tag: string;
-  class: string;
-  maxWidth: string;
-  width: number;
-}
-
-interface Section {
-  index: number;
-  height: number;
-  paddingTop: string;
-  paddingBottom: string;
-  backgroundColor: string;
-  backgroundImage: string | null;
-  hasAnimation: boolean;
-  hasTransition: boolean;
-}
-
-interface StickyElement {
-  tag: string;
-  class: string;
-  position: string;
-}
-
-interface HeadingStyle {
-  fontSize: string;
-  fontWeight: string;
-  lineHeight: string;
-  letterSpacing: string;
-  fontFamily: string;
-  color: string;
-  textTransform: string;
-}
-
-// ─── Streaming event types ────────────────────────────────────────────────────
 
 export type StreamEvent =
   | { type: 'stage'; stage: string; message: string }
