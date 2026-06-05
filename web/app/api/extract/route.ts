@@ -57,7 +57,10 @@ export async function POST(req: NextRequest) {
         }
 
         const extractionData: ExtractionData = await extractResponse.json();
-
+        // Guard against partial/failed extraction
+        if (!extractionData?.screenshots || !extractionData?.cssData) {
+          throw new Error('Extraction returned incomplete data — the site may have blocked the scraper or timed out');
+        }
         sseEvent(controller, {
           type: 'stage',
           stage: 'analyzing',
