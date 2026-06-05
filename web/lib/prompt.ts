@@ -1,42 +1,41 @@
 // @ts-nocheck
-// ─── The Design DNA Claude Prompt ───────────────────────────────────────────
-// This is the most important file in the entire project.
-// The quality of the .md output depends entirely on these prompts.
+// ─── Design DNA Claude Prompt ────────────────────────────────────────────────
 
-export const SYSTEM_PROMPT = `You are an elite design analyst — part world-class UI/UX designer, part senior frontend engineer. You have spent your career studying, building, and reverse-engineering the world's best digital products. You understand not just what a design looks like, but WHY every decision was made and HOW to recreate its feel in any technology.
+export const SYSTEM_PROMPT = `You are an elite design analyst — part world-class UI/UX designer, part senior frontend engineer. You have spent your career studying the world's best digital products and can identify every design decision from a CSS value to a motion philosophy.
 
-You will receive:
-- Extracted CSS data: custom properties, @keyframes, computed element styles, font info
-- Tech stack detection results
-- Sequential screenshots (scroll 0% → 96%) showing the full page experience
-- Before/after screenshot pairs showing hover states
+You will receive data captured by reading the browser's animation engine directly — not from screenshots, not from guessing. The timing values, easing curves, and keyframe data are EXACT, extracted from the browser's own animation system in real time.
 
-Your mission: Write a comprehensive Design DNA document that captures this site's complete design system so thoroughly that someone — or another AI — could recreate its FEEL, AESTHETIC, and SYSTEM in any technology, months later, without ever seeing the original.
+You will also receive:
+- CSS custom properties and @keyframes extracted directly from stylesheets
+- Animation library internal state (GSAP timelines, ScrollTrigger configs, Lenis settings)
+- IntersectionObserver triggers with exact scroll positions
+- MutationObserver data showing class toggles and typewriter effects
+- Hover transition data captured by polling the animation engine during hover
+- Screenshots for visual context
 
-═══ CRITICAL WRITING RULES ═══
+Your mission: Write a comprehensive Design DNA document that captures this site's complete design system so thoroughly that someone could recreate its FEEL, AESTHETIC, and MOTION in any technology.
 
-1. NEVER use a template. Write based on what you actually see and extracted. The document shape comes from the design itself.
+═══ WRITING RULES ═══
 
-2. Be proportional. Complex, heavily-designed sites deserve 500+ line documents with rich subsections. Minimal sites deserve clean, sparse, precise docs. Never pad, never skip real content.
+1. The animation engine data contains EXACT values — use them verbatim. Never round a cubic-bezier. Never approximate a duration that was directly measured.
 
-3. When you have extracted CSS values — USE THEM EXACTLY. Never round a cubic-bezier. Never approximate a hex color that was directly extracted. Precision is the whole point.
+2. The scroll animation data shows exactly WHAT triggered at WHAT scroll position. Use this to document the scroll choreography precisely.
 
-4. Lead with INTENT, back with VALUES. Write as a designer who understands WHY before documenting WHAT. "The buttons use scale(1.02) on hover" is weak. "Motion is used surgically — buttons acknowledge interaction with a barely-there scale pulse (1.02) that signals responsiveness without drama" is how you write.
+3. The hover animation data was captured by reading the engine during hover — document every property that changed, the exact duration, the exact easing.
 
-5. COMPARE hover screenshots rigorously. Look at the before/after pairs pixel by pixel. Document EVERY change — color shift, shadow addition, border change, scale, position shift. If a card lifts 4px, say 4px, not "lifts slightly."
+4. Typewriter effects have measured character intervals — document the speed in ms.
 
-6. If you see something unique or complex (WebGL, morphing paths, scroll-jacked pinned sections, custom cursor physics, text scramble), give it its own subsection and document it in full.
+5. Class toggle patterns reveal animation triggers — document what class gets added/removed and what visual change it produces.
 
-7. The ⑬ RECREATION BRIEF must always be present, always be complete, and always be copy-pasteable as a Claude prompt with zero modification needed.
+6. Write proportionally. Complex animated sites deserve 500+ lines. Simple sites get clean sparse docs. Never pad.
 
-8. Output ONLY the markdown document. No preamble. No "Here is the Design DNA document:". Start immediately with # DESIGN DNA — [site name].
+7. The ⑬ RECREATION BRIEF must always be present and always be copy-pasteable as a Claude prompt.
 
-═══ SECTION STRUCTURE ═══
+8. Output ONLY the markdown. No preamble. Start with # DESIGN DNA — [site name].
 
-Use these exact numbered headers. Write content freely within each. Skip sections that have nothing real to say. Add subsections freely.
-
+SECTION HEADERS:
 ① AESTHETIC PROFILE
-② TECH STACK  
+② TECH STACK
 ③ COLOR SYSTEM
 ④ TYPOGRAPHY SYSTEM
 ⑤ SPACING & LAYOUT
@@ -47,305 +46,268 @@ Use these exact numbered headers. Write content freely within each. Skip section
 ⑩ DESIGN RULES
 ⑪ CSS TOKENS — ready to paste
 ⑫ ANIMATION PRIMITIVES — ready to paste
-⑬ RECREATION BRIEF — always present, always complete`;
+⑬ RECREATION BRIEF`;
 
-// ─── Build the user message for Claude ───────────────────────────────────────
+// ─── Build Claude Messages ────────────────────────────────────────────────────
 
-export function buildClaudeMessages(data: import('./types').ExtractionData) {
-  const {
-    url,
-    title,
-    extractedAt,
-    techStack,
-    cssData,
-    designData,
-    domStructure,
-    screenshots,
-    hoverCaptures,
-  } = data;
+export function buildClaudeMessages(data) {
+  const { url, title, extractedAt, techStack, cssData, designData, domStructure, animationEngine, screenshots } = data;
 
-  // Build the text content block
-  const textContent = buildTextContent({
-    url, title, extractedAt,
-    techStack, cssData, designData, domStructure,
-    screenshotCount: screenshots.length,
-    hoverCount: hoverCaptures.length,
-  });
+  const textContent = buildTextContent({ url, title, extractedAt, techStack, cssData, designData, domStructure, animationEngine });
 
-  // Build the full content array with text + images interleaved
   const contentBlocks = [];
-
-  // Opening text with all extracted data
   contentBlocks.push({ type: 'text', text: textContent });
 
-  // ── Scroll screenshots ──
+  // Screenshots for visual context
   contentBlocks.push({
     type: 'text',
     text: `\n\n═══════════════════════════════════════
-SCROLL SCREENSHOTS (${screenshots.length} frames — full page journey)
-═══════════════════════════════════════
-Study these sequentially. Note what appears at each scroll position,
-what animations trigger, how sections transition, the visual rhythm.`,
+VISUAL SCREENSHOTS (${screenshots.length} frames — for visual context only)
+The animation data above is more precise than what screenshots can show.
+Use these to understand layout, color, and visual hierarchy.
+═══════════════════════════════════════`,
   });
 
   screenshots.forEach((s, i) => {
-    contentBlocks.push({
-      type: 'text',
-      text: `\n--- Frame ${i + 1}/${screenshots.length} — Scroll ${s.scrollPercent}% (${s.scrollY}px) ---`,
-    });
-    contentBlocks.push({
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: s.data },
-    });
+    contentBlocks.push({ type: 'text', text: `\n--- Scroll ${s.scrollPercent}% ---` });
+    contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: s.data } });
   });
 
-  // ── Hover state captures ──
-  if (hoverCaptures.length > 0) {
+  // Hover captures
+  if (animationEngine?.hoverTransitions?.length > 0) {
     contentBlocks.push({
       type: 'text',
       text: `\n\n═══════════════════════════════════════
-HOVER STATE ANALYSIS (${hoverCaptures.length} element types)
-═══════════════════════════════════════
-For each pair: LEFT = resting state, RIGHT = hover state.
-Document EVERY visual change between the two states with precision.
-Colors, transforms, shadows, borders, opacity — all of it.`,
+HOVER STATE CAPTURES
+Animation engine data is in the text above. These images show the visual delta.
+═══════════════════════════════════════`,
     });
 
-    hoverCaptures.forEach((h, i) => {
-      contentBlocks.push({
-        type: 'text',
-        text: `\n--- Hover pair ${i + 1}/${hoverCaptures.length}: ${h.label.toUpperCase()} ---`,
-      });
-      contentBlocks.push({
-        type: 'text',
-        text: 'BEFORE (resting state):',
-      });
-      contentBlocks.push({
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: h.before },
-      });
-      contentBlocks.push({
-        type: 'text',
-        text: 'AFTER (hover state — document every change):',
-      });
-      contentBlocks.push({
-        type: 'image',
-        source: { type: 'base64', media_type: 'image/jpeg', data: h.after },
-      });
+    animationEngine.hoverTransitions.forEach((h, i) => {
+      if (!h.before || !h.after) return;
+      contentBlocks.push({ type: 'text', text: `\n--- ${h.label.toUpperCase()} — Before hover:` });
+      contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: h.before } });
+      contentBlocks.push({ type: 'text', text: `${h.label.toUpperCase()} — After hover:` });
+      contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: h.after } });
     });
   }
 
-  // ── Final instruction ──
   contentBlocks.push({
     type: 'text',
     text: `\n\n═══════════════════════════════════════
-Now write the complete Design DNA document.
-Be a designer. Be precise. Be thorough.
-Start with # DESIGN DNA — [site name extracted from title/url]
+Write the complete Design DNA document now.
+Start with # DESIGN DNA — [site name]
 ═══════════════════════════════════════`,
   });
 
   return [{ role: 'user', content: contentBlocks }];
 }
 
-// ─── Format extracted data as structured text ────────────────────────────────
+// ─── Format All Data As Structured Text ──────────────────────────────────────
 
-function buildTextContent({ url, title, extractedAt, techStack, cssData, designData, domStructure, screenshotCount, hoverCount }) {
-  const lines = [];
+function buildTextContent({ url, title, extractedAt, techStack, cssData, designData, domStructure, animationEngine }) {
+  const L = [];
 
-  lines.push(`# Design DNA Extraction Request`);
-  lines.push(`URL: ${url}`);
-  lines.push(`Title: ${title}`);
-  lines.push(`Extracted: ${extractedAt}`);
-  lines.push(`Screenshots captured: ${screenshotCount} scroll frames + ${hoverCount} hover pairs`);
+  L.push(`# Design DNA Extraction`);
+  L.push(`URL: ${url}`);
+  L.push(`Title: ${title}`);
+  L.push(`Extracted: ${extractedAt}`);
 
   // ── Tech Stack ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`DETECTED TECH STACK`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(JSON.stringify(techStack, null, 2));
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`TECH STACK`);
+  L.push(`${'═'.repeat(50)}`);
+  L.push(JSON.stringify(techStack, null, 2));
 
-  // ── CSS Custom Properties ──
-  const customProps = cssData.customProperties;
-  const propCount = Object.keys(customProps).length;
+  // ── Animation Engine: Load Sequence ──
+  const { loadSequence, scrollAnimations, hoverTransitions, libraries, intersectionTriggers, domMutations, typewriterEffects, classTogglePatterns } = animationEngine || {};
 
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`CSS CUSTOM PROPERTIES (${propCount} variables found in :root)`);
-  lines.push(`═══════════════════════════════════════`);
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`ANIMATION ENGINE — PAGE LOAD SEQUENCE`);
+  L.push(`${(loadSequence||[]).length} animations captured in first 4 seconds`);
+  L.push(`All values are EXACT — read from browser animation engine`);
+  L.push(`${'═'.repeat(50)}`);
 
-  if (propCount > 0) {
-    // Group by category
-    const groups = {
-      colors: {},
-      backgrounds: {},
-      spacing: {},
-      typography: {},
-      animation: {},
-      radius: {},
-      shadow: {},
-      other: {},
-    };
+  (loadSequence || []).forEach((anim, i) => {
+    L.push(`\n[${i + 1}] ${anim.element}`);
+    L.push(`  Started at:  ${anim.elapsed}ms after load`);
+    L.push(`  Duration:    ${anim.timing?.duration}ms`);
+    L.push(`  Delay:       ${anim.timing?.delay}ms`);
+    L.push(`  Easing:      ${anim.timing?.easing}`);
+    L.push(`  Fill:        ${anim.timing?.fill}`);
+    L.push(`  Iterations:  ${anim.timing?.iterations}`);
+    if (anim.keyframes?.length) {
+      L.push(`  Keyframes:`);
+      anim.keyframes.forEach(kf => {
+        L.push(`    offset ${kf.offset}: ${JSON.stringify(kf).slice(0, 150)}`);
+      });
+    }
+  });
 
-    Object.entries(customProps).forEach(([key, val]) => {
-      const k = key.toLowerCase();
-      if (k.includes('color') || k.includes('text') || k.includes('border') || val.match(/^#|^rgb|^hsl/)) {
-        groups.colors[key] = val;
-      } else if (k.includes('bg') || k.includes('background') || k.includes('surface')) {
-        groups.backgrounds[key] = val;
-      } else if (k.includes('spacing') || k.includes('gap') || k.includes('padding') || k.includes('margin') || k.includes('size')) {
-        groups.spacing[key] = val;
-      } else if (k.includes('font') || k.includes('text') || k.includes('line') || k.includes('letter') || k.includes('type')) {
-        groups.typography[key] = val;
-      } else if (k.includes('duration') || k.includes('ease') || k.includes('transition') || k.includes('delay') || k.includes('timing')) {
-        groups.animation[key] = val;
-      } else if (k.includes('radius') || k.includes('rounded')) {
-        groups.radius[key] = val;
-      } else if (k.includes('shadow') || k.includes('elevation')) {
-        groups.shadow[key] = val;
-      } else {
-        groups.other[key] = val;
+  // ── Animation Engine: Scroll Animations ──
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`ANIMATION ENGINE — SCROLL-TRIGGERED ANIMATIONS`);
+  L.push(`${(scrollAnimations||[]).length} unique animations triggered during scroll`);
+  L.push(`${'═'.repeat(50)}`);
+
+  (scrollAnimations || []).forEach((anim, i) => {
+    L.push(`\n[${i + 1}] ${anim.element}`);
+    L.push(`  Triggered at scroll: ${anim.triggeredAtScrollY}px`);
+    L.push(`  Duration:   ${anim.timing?.duration}ms`);
+    L.push(`  Easing:     ${anim.timing?.easing}`);
+    L.push(`  Delay:      ${anim.timing?.delay}ms`);
+    L.push(`  Fill:       ${anim.timing?.fill}`);
+    if (anim.keyframes?.length) {
+      anim.keyframes.forEach(kf => {
+        L.push(`  offset ${kf.offset}: ${JSON.stringify(kf).slice(0, 150)}`);
+      });
+    }
+  });
+
+  // ── Animation Engine: Hover Transitions ──
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`ANIMATION ENGINE — HOVER TRANSITIONS`);
+  L.push(`Captured by polling animation engine during hover`);
+  L.push(`${'═'.repeat(50)}`);
+
+  (hoverTransitions || []).forEach(h => {
+    L.push(`\n[${h.label.toUpperCase()}]`);
+    L.push(`Resting styles:`);
+    Object.entries(h.restingStyles || {}).forEach(([k, v]) => {
+      if (v && v !== 'none' && v !== 'normal' && v !== '0px' && v !== 'rgba(0, 0, 0, 0)') {
+        L.push(`  ${k}: ${String(v).slice(0, 100)}`);
       }
     });
-
-    Object.entries(groups).forEach(([groupName, props]) => {
-      if (Object.keys(props).length === 0) return;
-      lines.push(`\n/* ${groupName.toUpperCase()} */`);
-      Object.entries(props).forEach(([k, v]) => {
-        lines.push(`${k}: ${v};`);
-      });
+    L.push(`Hover styles:`);
+    Object.entries(h.hoverStyles || {}).forEach(([k, v]) => {
+      if (v && v !== 'none' && v !== 'normal' && v !== '0px' && v !== 'rgba(0, 0, 0, 0)') {
+        L.push(`  ${k}: ${String(v).slice(0, 100)}`);
+      }
     });
-  } else {
-    lines.push('No CSS custom properties detected. Design likely uses hardcoded values or Tailwind utility classes.');
+    if (h.animationsDetectedDuringHover?.length) {
+      L.push(`Animations running during hover:`);
+      h.animationsDetectedDuringHover.forEach(a => {
+        L.push(`  ${a.element}: ${a.timing?.duration}ms, easing: ${a.timing?.easing}`);
+        if (a.keyframes?.length) {
+          a.keyframes.forEach(kf => L.push(`    offset ${kf.offset}: ${JSON.stringify(kf).slice(0, 120)}`));
+        }
+      });
+    }
+  });
+
+  // ── IntersectionObserver Triggers ──
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`INTERSECTION OBSERVER — SCROLL TRIGGERS`);
+  L.push(`${(intersectionTriggers||[]).length} elements triggered during scroll`);
+  L.push(`${'═'.repeat(50)}`);
+
+  (intersectionTriggers || []).slice(0, 40).forEach(io => {
+    L.push(`  scrollY ${io.scrollY}px | threshold ${io.threshold} | ${io.tag}.${(io.class||'').split(' ').slice(0,3).join('.')}`);
+  });
+
+  // ── Typewriter Effects ──
+  if ((typewriterEffects || []).length > 0) {
+    L.push(`\n\n${'═'.repeat(50)}`);
+    L.push(`TYPEWRITER EFFECTS DETECTED`);
+    L.push(`${'═'.repeat(50)}`);
+    typewriterEffects.forEach(tw => {
+      L.push(`\nElement: ${tw.element}`);
+      L.push(`  Character interval: ${tw.intervalMs}ms per character`);
+      L.push(`  Characters typed: ${tw.characterCount}`);
+      L.push(`  Started at: ${tw.startedAtMs}ms after load`);
+      L.push(`  Sample text: "${tw.sample?.end?.slice(0, 100)}"`);
+    });
   }
 
-  // ── @keyframes ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`EXTRACTED @KEYFRAMES ANIMATIONS (${cssData.keyframes.length} found)`);
-  lines.push(`═══════════════════════════════════════`);
+  // ── Class Toggle Patterns ──
+  if ((classTogglePatterns || []).length > 0) {
+    L.push(`\n\n${'═'.repeat(50)}`);
+    L.push(`CLASS TOGGLE PATTERNS (animation triggers)`);
+    L.push(`${'═'.repeat(50)}`);
+    classTogglePatterns.slice(0, 20).forEach(p => {
+      L.push(`  Class: "${p.className}" | ${p.occurrences}x on ${p.elements.join(',')} | at scroll positions: ${p.scrollPositions.join(', ')}px`);
+    });
+  }
 
-  if (cssData.keyframes.length > 0) {
-    cssData.keyframes.forEach(kf => lines.push(`\n${kf}`));
-  } else {
-    lines.push('No @keyframes found. Animations are likely JS-driven (GSAP/Framer Motion) or CSS transitions only.');
+  // ── Animation Library Internal State ──
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`ANIMATION LIBRARY INTERNAL STATE`);
+  L.push(`${'═'.repeat(50)}`);
+  L.push(JSON.stringify(libraries || {}, null, 2));
+
+  // ── CSS Custom Properties ──
+  const props = cssData.customProperties || {};
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`CSS CUSTOM PROPERTIES (${Object.keys(props).length} variables)`);
+  L.push(`${'═'.repeat(50)}`);
+
+  const groups = { colors: {}, backgrounds: {}, animation: {}, typography: {}, spacing: {}, radius: {}, shadow: {}, other: {} };
+  Object.entries(props).forEach(([k, v]) => {
+    const kl = k.toLowerCase();
+    if (kl.includes('color') || kl.includes('text') || kl.includes('border') || String(v).match(/^#|^rgb|^hsl/)) groups.colors[k] = v;
+    else if (kl.includes('bg') || kl.includes('background') || kl.includes('surface')) groups.backgrounds[k] = v;
+    else if (kl.includes('ease') || kl.includes('duration') || kl.includes('delay') || kl.includes('timing')) groups.animation[k] = v;
+    else if (kl.includes('font') || kl.includes('text') || kl.includes('line') || kl.includes('letter')) groups.typography[k] = v;
+    else if (kl.includes('space') || kl.includes('gap') || kl.includes('padding') || kl.includes('margin')) groups.spacing[k] = v;
+    else if (kl.includes('radius') || kl.includes('rounded')) groups.radius[k] = v;
+    else if (kl.includes('shadow')) groups.shadow[k] = v;
+    else groups.other[k] = v;
+  });
+
+  Object.entries(groups).forEach(([name, vals]) => {
+    if (!Object.keys(vals).length) return;
+    L.push(`\n/* ${name.toUpperCase()} */`);
+    Object.entries(vals).forEach(([k, v]) => L.push(`${k}: ${v};`));
+  });
+
+  // ── @keyframes ──
+  if (cssData.keyframes?.length) {
+    L.push(`\n\n${'═'.repeat(50)}`);
+    L.push(`@KEYFRAMES (${cssData.keyframes.length} definitions)`);
+    L.push(`${'═'.repeat(50)}`);
+    cssData.keyframes.forEach(kf => L.push(`\n${kf}`));
   }
 
   // ── Computed Styles ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`COMPUTED STYLES — KEY ELEMENTS`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(`These are the actual rendered values for critical UI elements.`);
-
-  Object.entries(cssData.computedStyles).forEach(([element, styles]) => {
-    const cleanStyles = Object.fromEntries(
-      Object.entries(styles).filter(([, v]) => v !== undefined && v !== '')
-    );
-    if (Object.keys(cleanStyles).length < 3) return;
-    lines.push(`\n[${element.toUpperCase()}]`);
-    Object.entries(cleanStyles).forEach(([prop, val]) => {
-      lines.push(`  ${prop}: ${val}`);
-    });
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`COMPUTED STYLES — KEY ELEMENTS`);
+  L.push(`${'═'.repeat(50)}`);
+  Object.entries(cssData.computedStyles || {}).forEach(([el, styles]) => {
+    const clean = Object.fromEntries(Object.entries(styles).filter(([, v]) => v !== undefined && v !== ''));
+    if (Object.keys(clean).length < 3) return;
+    L.push(`\n[${el.toUpperCase()}]`);
+    Object.entries(clean).forEach(([k, v]) => L.push(`  ${k}: ${v}`));
   });
 
   // ── Typography ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`TYPOGRAPHY — HEADING SCALE`);
-  lines.push(`═══════════════════════════════════════`);
-  Object.entries(designData.headingSizes).forEach(([tag, styles]) => {
-    lines.push(`\n[${tag.toUpperCase()}]`);
-    Object.entries(styles).forEach(([prop, val]) => {
-      if (val) lines.push(`  ${prop}: ${val}`);
-    });
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`TYPOGRAPHY HEADING SCALE`);
+  L.push(`${'═'.repeat(50)}`);
+  Object.entries(designData.headingSizes || {}).forEach(([tag, s]) => {
+    L.push(`\n[${tag.toUpperCase()}]`);
+    Object.entries(s).forEach(([k, v]) => { if (v) L.push(`  ${k}: ${v}`); });
   });
 
   // ── Fonts ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`FONTS`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(`Custom font families detected: ${cssData.fontFamiliesUsed.join(', ') || 'System fonts only'}`);
-  if (cssData.googleFontsLinks.length > 0) {
-    lines.push(`Google Fonts URLs:`);
-    cssData.googleFontsLinks.forEach(l => lines.push(`  ${l}`));
-  }
-  if (cssData.fontFaces.length > 0) {
-    lines.push(`@font-face declarations (${cssData.fontFaces.length}):`);
-    cssData.fontFaces.forEach(ff => lines.push(ff));
-  }
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`FONTS`);
+  L.push(`${'═'.repeat(50)}`);
+  L.push(`Custom families: ${cssData.fontFamiliesUsed?.join(', ') || 'system only'}`);
+  if (cssData.googleFontsLinks?.length) cssData.googleFontsLinks.forEach(l => L.push(`Google Fonts: ${l}`));
 
   // ── Layout ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`LAYOUT & STRUCTURE`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(`Page dimensions: ${designData.pageWidth}px × ${designData.pageHeight}px`);
-  lines.push(`Viewport width at capture: ${designData.viewportWidth}px`);
-  lines.push(`Sections detected: ${designData.totalSectionCount}`);
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`LAYOUT`);
+  L.push(`${'═'.repeat(50)}`);
+  L.push(`Page height: ${designData.pageHeight}px | Viewport: ${designData.viewportWidth}px`);
+  L.push(`Sections: ${designData.totalSectionCount}`);
+  L.push(`Sticky: ${JSON.stringify(designData.stickyElements)}`);
 
-  if (designData.containers.length > 0) {
-    lines.push(`\nContainer/layout elements:`);
-    designData.containers.forEach(c => {
-      lines.push(`  ${c.tag}.${c.class} → maxWidth: ${c.maxWidth}, rendered width: ${Math.round(c.width)}px`);
-    });
-  }
+  // ── DOM ──
+  L.push(`\n\n${'═'.repeat(50)}`);
+  L.push(`DOM FEATURES`);
+  L.push(`${'═'.repeat(50)}`);
+  L.push(JSON.stringify(domStructure, null, 2));
 
-  if (designData.stickyElements.length > 0) {
-    lines.push(`\nSticky/fixed elements:`);
-    designData.stickyElements.forEach(el => {
-      lines.push(`  ${el.tag} (${el.position}): ${el.class}`);
-    });
-  }
-
-  // ── DOM Features ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`DOM FEATURES & COMPONENTS DETECTED`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(JSON.stringify(domStructure, null, 2));
-
-  // ── Section backgrounds ──
-  if (designData.sections.length > 0) {
-    lines.push(`\n\n═══════════════════════════════════════`);
-    lines.push(`SECTION ANALYSIS (backgrounds & spacing)`);
-    lines.push(`═══════════════════════════════════════`);
-    designData.sections.forEach((s, i) => {
-      const parts = [`Section ${i + 1}: height ${s.height}px, padding ${s.paddingTop}/${s.paddingBottom}`];
-      if (s.backgroundColor && s.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-        parts.push(`bg: ${s.backgroundColor}`);
-      }
-      if (s.backgroundImage) parts.push(`bg-image: ${s.backgroundImage}`);
-      lines.push(parts.join(' | '));
-    });
-  }
-
-  // ── Color samples ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`COLOR SAMPLES (from computed styles)`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(`Text colors found: ${designData.colorSamples.slice(0, 12).join(', ')}`);
-  lines.push(`Background colors found: ${designData.bgSamples.slice(0, 10).join(', ')}`);
-
-  // ── CSS Transitions ──
-  if (cssData.transitions.length > 0) {
-    lines.push(`\n\n═══════════════════════════════════════`);
-    lines.push(`CSS TRANSITIONS DETECTED (${Math.min(cssData.transitions.length, 20)})`);
-    lines.push(`═══════════════════════════════════════`);
-    cssData.transitions.slice(0, 20).forEach(t => lines.push(t));
-  }
-
-  // ── Parallax / special features ──
-  lines.push(`\n\n═══════════════════════════════════════`);
-  lines.push(`SPECIAL FEATURES`);
-  lines.push(`═══════════════════════════════════════`);
-  lines.push(`Parallax elements: ${designData.hasParallax}`);
-  lines.push(`WebGL/Canvas: ${techStack.webgl} (${techStack.canvasAnimations || 0} canvas elements)`);
-  lines.push(`Custom cursor: ${techStack.customCursor}`);
-  lines.push(`Magnetic elements: ${techStack.magneticElements || 0}`);
-  lines.push(`Lottie animations: ${techStack.lottie}`);
-  lines.push(`SplitType/SplitText: ${techStack.splitType}`);
-  lines.push(`Video background: ${techStack.videoBackground || domStructure.hasVideoBackground}`);
-  lines.push(`Particle system: ${techStack.particles}`);
-
-  if (domStructure.dataAttributes && domStructure.dataAttributes.length > 0) {
-    lines.push(`\nData attributes detected (reveals animation approach):`);
-    lines.push(domStructure.dataAttributes.join(', '));
-  }
-
-  return lines.join('\n');
+  return L.join('\n');
 }
