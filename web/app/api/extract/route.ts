@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
         });
 
         // ── Stage 2: Claude Analysis + Streaming ──────────────────────────
-        const messages = buildClaudeMessages(extractionData);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const messages = buildClaudeMessages(extractionData) as any;
 
         sseEvent(controller, {
           type: 'stage',
